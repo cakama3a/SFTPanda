@@ -2,6 +2,8 @@
 
 A modern, fast, and feature-rich SFTP client built with Python and PySide6 (Qt). Designed with a sleek, Discord-inspired dark theme, it offers a premium user experience and advanced features for file management and synchronization.
 
+<img width="901" height="622" alt="python_cQt0rhSel0 copy" src="https://github.com/user-attachments/assets/e5dcb01a-d5ad-4731-b61c-305c782b13bd" />
+
 ---
 
 ## ✨ Key Features
