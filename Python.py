@@ -6,9 +6,9 @@ import paramiko
 try:
     import paramiko.sftp_file
     import paramiko.common
-    # Встановлюємо розмір запиту в 256КБ (безпечний ліміт для OpenSSH) для високої швидкості
+    # Set request size to 256KB (safe limit for OpenSSH) for high speed
     paramiko.sftp_file.SFTPFile._MAX_REQUEST_SIZE = 262144
-    # Зберігаємо стабільний розмір вікна (2МБ) та обмежуємо розмір пакета до 256КБ
+    # Maintain stable window size (2MB) and limit packet size to 256KB
     paramiko.common.DEFAULT_WINDOW_SIZE = 2097152
     paramiko.common.DEFAULT_MAX_PACKET_SIZE = 262144
 except Exception:
@@ -37,11 +37,11 @@ try:
 except Exception:
     qta = None  # fallback to text icons if library is missing
 
-# Клас для обгортки файлу з підтримкою обмеження швидкості передачі
+# Wrapper class for file transfer with rate limiting support
 class ThrottledFile:
     def __init__(self, file_obj, rate_limit_kbps=0):
         self.file_obj = file_obj
-        # Переводимо КБ/с в байти/с. 0 або менше означає без ліміту.
+        # Convert KB/s to bytes/s. 0 or less means unlimited.
         self.rate_limit = rate_limit_kbps * 1024 if rate_limit_kbps > 0 else 0
         self.start_time = time.time()
         self.transferred = 0
@@ -53,10 +53,10 @@ class ThrottledFile:
         self.transferred += length
         elapsed = time.time() - self.start_time
         
-        # Очікувана швидкість на даний момент
+        # Expected speed at the current moment
         expected_speed = self.transferred / elapsed if elapsed > 0 else 0
         
-        # Якщо ми передаємо дані занадто швидко, розраховуємо час очікування
+        # If transferring too fast, calculate throttle delay
         if expected_speed > self.rate_limit:
             wait_time = (self.transferred / self.rate_limit) - elapsed
             time.sleep(wait_time)
@@ -73,11 +73,11 @@ class ThrottledFile:
             self._throttle(result)
         return result
 
-    # Це потрібно, щоб paramiko міг викликати інші методи файлу (напр. seek, tell)
+    # Allows paramiko to invoke other file methods (e.g. seek, tell)
     def __getattr__(self, attr):
         return getattr(self.file_obj, attr)
 
-# Функція для отримання шляху до ресурсів (іконок, файлів тощо)
+# Helper to get resource path (icons, config, etc.)
 def resource_path(relative_path):
     try:
         # PyInstaller creates a temp folder and stores path in _MEIPASS
@@ -88,48 +88,46 @@ def resource_path(relative_path):
 
     return os.path.join(base_path, relative_path)
 
-# ДОДАЙТЕ ЦЕЙ НОВИЙ КЛАС ПІСЛЯ ІМПОРТІВ
-
 class StyledSpinBox(QSpinBox):
     def __init__(self, parent=None):
         super().__init__(parent)
 
-        # Створюємо наші власні кнопки
+        # Create custom control buttons
         self.up_button = QPushButton()
         self.down_button = QPushButton()
         
-        # Встановлюємо для них іконки з qtawesome
+        # Set buttons icons using qtawesome
         if qta:
             up_icon = qta.icon('fa5s.chevron-up', color='#dcddde')
             down_icon = qta.icon('fa5s.chevron-down', color='#dcddde')
             self.up_button.setIcon(up_icon)
             self.down_button.setIcon(down_icon)
         else:
-            # Текстовий варіант, якщо qtawesome не встановлено
+            # Fallback to text icons if qtawesome is missing
             self.up_button.setText("▲")
             self.down_button.setText("▼")
 
-        # Прибираємо стандартні стрілки самого QSpinBox
+        # Hide default QSpinBox arrows
         self.setButtonSymbols(QAbstractSpinBox.ButtonSymbols.NoButtons)
 
-        # З'єднуємо натискання наших кнопок з вбудованими функціями QSpinBox
+        # Connect custom buttons to QSpinBox slots
         self.up_button.clicked.connect(self.stepUp)
         self.down_button.clicked.connect(self.stepDown)
 
-        # Додаємо кнопкам імена об'єктів для стилізації через QSS
+        # Assign object names for QSS styling
         self.up_button.setObjectName("upButton")
         self.down_button.setObjectName("downButton")
         
-        # Створюємо лейаут для розміщення кнопок всередині віджета
+        # Create layout for buttons inside the widget
         layout = QHBoxLayout(self)
-        layout.setContentsMargins(0, 0, 2, 0) # Відступ справа, щоб кнопки не прилипали
+        layout.setContentsMargins(0, 0, 2, 0) # Right margin to prevent buttons from sticking
         layout.setSpacing(0)
-        layout.addStretch() # Розтягуємо простір, щоб кнопки були справа
+        layout.addStretch() # Add stretch to push buttons to the right
 
-        # Лейаут для вертикального розміщення кнопок
+        # Vertical layout for buttons
         button_layout = QVBoxLayout()
-        button_layout.setContentsMargins(0, 2, 0, 2) # Вертикальні відступи
-        button_layout.setSpacing(1) # Проміжок між кнопками
+        button_layout.setContentsMargins(0, 2, 0, 2) # Vertical margins
+        button_layout.setSpacing(1) # Spacing between buttons
         button_layout.addWidget(self.up_button)
         button_layout.addWidget(self.down_button)
         
@@ -148,11 +146,11 @@ class StyledCheckBox(QCheckBox):
         painter = QPainter(self)
         painter.setRenderHint(QPainter.Antialiasing)
         
-        # Визначаємо розміри та положення квадратика чекбокса
+        # Calculate dimensions and position of the checkbox indicator
         indicator_size = 18
         y_offset = (self.height() - indicator_size) // 2
         
-        # Малюємо фон та рамку індикатора
+        # Draw indicator background and border
         rect_color = QColor("#202225")
         border_color = QColor("#7289da") if self.isChecked() else QColor("#4f545c")
         
@@ -163,12 +161,12 @@ class StyledCheckBox(QCheckBox):
         painter.setBrush(QBrush(rect_color))
         painter.drawRoundedRect(2, y_offset, indicator_size, indicator_size, 4, 4)
         
-        # Малюємо галочку, якщо вибрано
+        # Draw checkmark if selected
         if self.isChecked():
             painter.setPen(QPen(QColor(Qt.white), 2.5, Qt.SolidLine, Qt.RoundCap, Qt.RoundJoin))
             painter.setBrush(Qt.NoBrush)
             
-            # Малюємо галочку за координатами відносно індикатора
+            # Draw checkmark path relative to the indicator
             chk_x = 2
             chk_y = y_offset
             
@@ -179,7 +177,7 @@ class StyledCheckBox(QCheckBox):
             ])
             painter.drawPolyline(poly)
             
-        # Малюємо текст чекбокса праворуч від індикатора
+        # Draw checkbox text to the right of the indicator
         painter.setPen(QColor("#dcddde"))
         text_rect = self.rect()
         text_rect.setLeft(indicator_size + 12)
@@ -189,7 +187,7 @@ class StyledCheckBox(QCheckBox):
 
 class SFTPConnectionPool:
     def __init__(self):
-        self.pool = {}  # Ключ: (hostname, port, username) -> список кортежів (ssh_client, sftp_client, last_used_time)
+        self.pool = {}  # Key: (hostname, port, username) -> list of tuples (ssh_client, sftp_client, last_used_time)
         self.lock = threading.Lock()
 
     def get_connection(self, connection_details):
@@ -202,7 +200,7 @@ class SFTPConnectionPool:
                 while self.pool[key]:
                     ssh, sftp, last_used = self.pool[key].pop(0)
                     try:
-                        # Перевіряємо працездатність з'єднання (це неблокуюча перевірка прапорця)
+                        # Check if connection is active (non-blocking status check)
                         if ssh.get_transport() and ssh.get_transport().is_active():
                             ssh_ret, sftp_ret = ssh, sftp
                             break
@@ -211,7 +209,7 @@ class SFTPConnectionPool:
                     except Exception:
                         to_close.append((ssh, sftp))
                         
-        # Закриваємо неробочі з'єднання ПОЗА блокуванням
+        # Close dead connections outside the lock block
         for s, f in to_close:
             try: f.close()
             except Exception: pass
@@ -224,7 +222,7 @@ class SFTPConnectionPool:
         if not ssh or not sftp:
             return
         
-        # Швидка неблокуюча перевірка працездатності
+        # Fast non-blocking active check
         is_active = False
         try:
             if ssh.get_transport() and ssh.get_transport().is_active():
@@ -233,7 +231,7 @@ class SFTPConnectionPool:
             pass
             
         if not is_active:
-            # Закриваємо неробоче з'єднання поза локом
+            # Close dead connection outside lock
             try: sftp.close()
             except Exception: pass
             try: ssh.close()
@@ -247,13 +245,13 @@ class SFTPConnectionPool:
             if key not in self.pool:
                 self.pool[key] = []
             
-            # Утримуємо в пулі не більше 8 вільних з'єднань одночасно
+            # Keep at most 8 idle connections in the pool
             if len(self.pool[key]) < 8:
                 self.pool[key].append((ssh, sftp, time.time()))
             else:
                 close_needed = (ssh, sftp)
                 
-        # Закриваємо зайве з'єднання ПОЗА блокуванням
+        # Close excess connection outside lock
         if close_needed:
             s, f = close_needed
             try: f.close()
@@ -277,9 +275,8 @@ class SFTPConnectionPool:
 
 sftp_connection_pool = SFTPConnectionPool()
 
-
 class FileTransferThread(QThread):
-    transfer_started = Signal(str, str, str, int, int) # Сигнал для оновлення назви файлу в UI
+    transfer_started = Signal(str, str, str, int, int) # Signal to update file name in UI
     progress_updated = Signal(str, str, int, int)
     transfer_complete = Signal(str, str, bool, str)
 
@@ -302,7 +299,7 @@ class FileTransferThread(QThread):
     def run(self):
         try:
             try:
-                # Пробуємо отримати вже підключене з'єднання з пулу
+                # Try to retrieve an active connection from the pool
                 self.ssh, self.sftp = sftp_connection_pool.get_connection(self.connection_details)
                 
                 if not (self.ssh and self.sftp):
@@ -312,7 +309,7 @@ class FileTransferThread(QThread):
                     connect_params = self.connection_details.copy()
                     connect_params.pop('start_directory', None)
                     connect_params.pop('name', None)
-                    connect_params['timeout'] = 20  # 20 секунд на підключення
+                    connect_params['timeout'] = 20  # 20-second connection timeout
 
                     if connect_params.get('key_filename') == '':
                         connect_params.pop('key_filename', None)
@@ -320,7 +317,7 @@ class FileTransferThread(QThread):
                     self.ssh.connect(**connect_params)
                     self.sftp = self.ssh.open_sftp()
                 
-                # Встановлюємо таймаут сокета на рівні SFTP-каналу для запобігання зависання
+                # Set socket timeout on SFTP channel to prevent hanging
                 if self.sftp and self.sftp.get_channel():
                     self.sftp.get_channel().settimeout(30.0)
             except Exception as e:
@@ -448,13 +445,11 @@ class OptimizedDirectoryScannerThread(QThread):
         try:
             quoted_items = " ".join([shlex.quote(item) for item in self.files_to_scan])
             
-            # --- ПОЧАТОК ЗМІН ---
-            # Оновлюємо команду: додаємо %T@ для отримання часу модифікації (mtime) як timestamp
+            # Update command: add %T@ to fetch modification time (mtime) as a timestamp
             command = (
                 f'cd {shlex.quote(self.remote_base_dir)} && '
                 f'find {quoted_items} -type f -printf "%p\\t%s\\t%T@\\n"'
             )
-            # --- КІНЕЦЬ ЗМІН ---
 
             stdin, stdout, stderr = self.ssh_client.exec_command(command, timeout=300)
 
@@ -464,29 +459,25 @@ class OptimizedDirectoryScannerThread(QThread):
                 line = line.strip()
                 if not line: continue
 
-                # --- ПОЧАТОК ЗМІН ---
-                # Тепер розбираємо рядок на 3 частини
+                # Parse the line into 3 parts
                 parts = line.split('\t', 2)
                 if len(parts) == 3:
                     relative_path, size_str, mtime_str = parts
-                    # --- КІНЕЦЬ ЗМІН ---
-                    
+
                     remote_item_path = f"{self.remote_base_dir}/{relative_path}".replace("//", "/")
                     local_item_path = os.path.join(self.local_base_dir, relative_path.replace('/', os.path.sep))
                     
                     try:
                         file_size = int(size_str)
-                        # --- ПОЧАТОК ЗМІН ---
+
                         mtime = float(mtime_str)
-                        # --- КІНЕЦЬ ЗМІН ---
-                        
+
                         local_item_dir = os.path.dirname(local_item_path)
                         os.makedirs(local_item_dir, exist_ok=True)
                         
-                        # --- ПОЧАТОК ЗМІН ---
-                        # Додаємо кортеж з 4 елементів
+                        # Add tuple of 4 elements
                         self.found_files.append((remote_item_path, local_item_path, mtime, file_size))
-                        # --- КІНЕЦЬ ЗМІН ---
+
                     except (ValueError, OSError) as e:
                         print(f"Помилка обробки рядка '{line}': {e}")
 
@@ -550,7 +541,7 @@ class OptimizedDirectoryUploadScannerThread(QThread):
                         stat_res = os.stat(local_path)
                         self.found_files.append((local_path, remote_path, stat_res.st_mtime, stat_res.st_size))
                     except OSError:
-                        pass # Пропускаємо файли, до яких немає доступу
+                        pass # Skip inaccessible files
                     processed_files += 1
                     self.progress_updated.emit(processed_files, total_files)
 
@@ -560,7 +551,7 @@ class OptimizedDirectoryUploadScannerThread(QThread):
                         
                         rel_path = os.path.relpath(root, os.path.dirname(local_path))
                         
-                        # Додаємо відносний шлях директорії до списку на створення
+                        # Add relative directory path to the creation list
                         self.dirs_to_create.add(rel_path.replace(os.path.sep, '/'))
 
                         for name in files:
@@ -585,12 +576,11 @@ class OptimizedDirectoryUploadScannerThread(QThread):
             if not self._cancelled:
                 self.error.emit(str(self.local_paths), lang["ERROR_SCANNING_DIRECTORY_SIMPLE"].format(e=e))
 
-# ДОДАЙТЕ ЦЕЙ НОВИЙ КЛАС
 class DirectoryCreationThread(QThread):
     """
     Створює дерево каталогів на віддаленому сервері однією командою 'mkdir -p'.
     """
-    creation_complete = Signal(list) # Повертає список файлів для подальшої обробки
+    creation_complete = Signal(list) # Returns file list for subsequent processing
     error = Signal(str)
 
     def __init__(self, ssh_client, remote_base_path, dirs_to_create, file_list, parent=None):
@@ -606,16 +596,16 @@ class DirectoryCreationThread(QThread):
             return
         
         try:
-            # Фільтруємо '.' (поточна директорія), оскільки її не треба створювати
+            # Filter out '.' (current directory) since it does not need to be created
             dirs_to_create = [d for d in self.dirs_to_create if d != '.']
             if not dirs_to_create:
                 self.creation_complete.emit(self.file_list)
                 return
 
-            # Екрануємо кожен шлях та об'єднуємо в один рядок
+            # Escape each path and join into a single string
             quoted_dirs = " ".join([shlex.quote(d) for d in dirs_to_create])
             
-            # Формуємо одну команду для створення всіх директорій
+            # Form a single command to create all directories
             command = f"cd {shlex.quote(self.remote_base_path)} && mkdir -p {quoted_dirs}"
             
             stdin, stdout, stderr = self.ssh_client.exec_command(command, timeout=300)
@@ -666,7 +656,6 @@ class ConflictResolutionThread(QThread):
                 connect_params.pop('start_directory', None)
                 connect_params.pop('name', None)
 
-                # ВИПРАВЛЕННЯ: Видаляємо порожній key_filename
                 if connect_params.get('key_filename') == '':
                     connect_params.pop('key_filename', None)
 
@@ -701,7 +690,7 @@ class ConflictResolutionThread(QThread):
                     ssh.close()
             
             else:
-                # --- [НОВА МАКСИМАЛЬНО ОПТИМІЗОВАНА ЛОГІКА ДЛЯ СКАЧУВАННЯ] ---
+
                 existing_local_files = {}
                 if self.local_base_path and os.path.isdir(self.local_base_path):
                     for root, _, filenames in os.walk(self.local_base_path):
@@ -730,8 +719,7 @@ class ConflictResolutionThread(QThread):
             if not self._is_cancelled:
                 self.error.emit(lang["ERROR_CHECKING_CONFLICTS"].format(e=str(e)))
 
-
-# Потік для синхронізації файлів (сканування локальної та віддаленої папки)
+# Thread for file synchronization (scanning local and remote directories)
 class SyncScannerThread(QThread):
     scan_complete = Signal(list)
     error = Signal(str)
@@ -941,7 +929,6 @@ class BaseDialog(QDialog):
         if is_danger: button.setStyleSheet("background-color: #f04747;")
         if on_click: button.clicked.connect(on_click)
         
-        # --- ДОДАНО: Встановлюємо кнопку як стандартну для натискання Enter ---
         if is_default:
             button.setDefault(True)
         
@@ -1270,7 +1257,7 @@ class SyncDialog(BaseDialog):
         menu = QMenu(self)
         ignore_action = QAction(lang.get("SYNC_ADD_TO_IGNORE", "Add to ignore list"), self)
         
-        # Визначаємо ім'я файлу або маску для ігнорування
+        # Get file name or pattern to ignore
         diff_item = self.diff_items[row]
         filename = os.path.basename(diff_item['rel_path'])
         
@@ -1279,44 +1266,44 @@ class SyncDialog(BaseDialog):
         menu.exec(self.table.viewport().mapToGlobal(position))
         
     def add_to_ignore_list(self, pattern, row_index):
-        # Отримуємо старі маски, додаємо нову
+        # Get old ignore patterns and add the new one
         patterns = self.settings_manager.get_sync_ignored_patterns()
         if pattern not in patterns:
             patterns.append(pattern)
             self.settings_manager.set_sync_ignored_patterns(patterns)
             
-            # Також оновлюємо текстове поле в налаштуваннях, якщо вони відкриті
+            # Update text edit in settings if the dialog is open
             if hasattr(self.parent(), "settings_dialog") and self.parent().settings_dialog:
                 self.parent().settings_dialog.sync_ignored_patterns_edit.setText(", ".join(patterns))
                 
             self.parent().log_event_message(lang.get("SYNC_IGNORE_ADDED_SUCCESS", "Pattern '{pattern}' added to sync ignore list.").format(pattern=pattern))
             
-            # Видаляємо рядок з інтерфейсу
+            # Remove row from the table widget
             self.table.removeRow(row_index)
             self.diff_items.pop(row_index)
             
-            # Якщо таблиця порожня, відключаємо кнопку синхронізації
+            # If table is empty, disable the sync button
             if self.table.rowCount() == 0:
                 self.status_label.setText(lang.get("SYNC_NO_CHANGES", "No changes detected. Folders are synchronized."))
                 self.ok_button.setEnabled(False)
 
     def reject(self):
-        # Змінюємо прапорець canceled і примусово відключаємо SSH сесію в потоці, щоб не чекати таймаутів
+        # Set canceled flag and terminate SSH channel to bypass timeouts
         try:
             if self.scanner and self.scanner.isRunning():
                 self.scanner.canceled = True
-                # М'яко просимо потік завершитись
+                # Request thread finish gracefully
                 self.scanner.wait(100)
                 if self.scanner.isRunning():
-                    # Примусове завершення
+                    # Force termination
                     self.scanner.terminate()
                     self.scanner.wait(100)
         except RuntimeError:
-            # Об'єкт C++ вже видалено
+            # C++ object already deleted
             pass
         super().reject()
 
-# Потік для операцій зі зміни директорії (листинг, зміна директорії)
+# Thread for directory operations (listing, changing directory)
 class DirectoryOperationThread(QThread):
     list_complete = Signal(list)
     change_dir_complete = Signal(str, str)
@@ -1349,7 +1336,6 @@ class DirectoryOperationThread(QThread):
         except Exception as e:
             self.error.emit(self.operation, lang["CRITICAL_THREAD_ERROR"].format(e=str(e)))
 
-# КРОК 1: ПОВНІСТЮ ЗАМІНІТЬ ЦЕЙ КЛАС
 class ArchiveExtractorThread(QThread):
     finished_signal = Signal(str)
     error_signal = Signal(str, str)
@@ -1366,20 +1352,20 @@ class ArchiveExtractorThread(QThread):
                 raise FileNotFoundError(lang["ARCHIVE_FILE_NOT_FOUND"])
 
             with zipfile.ZipFile(self.archive_path, 'r') as zf:
-                # Визначаємо, які файли розпаковувати:
-                # або переданий список, або всі файли з архіву.
+                # Determine which files to extract
+                # either the passed list or all files in the archive.
                 members = self.members_to_extract if self.members_to_extract is not None else zf.infolist()
                 
                 for member in members:
                     zf.extract(member, path=self.dest_dir)
                     
-                    # Пропускаємо каталоги, оскільки для них не потрібно встановлювати дату
+                    # Skip directories since setting timestamps on them is not required
                     if member.is_dir():
                         continue
                         
                     extracted_path = os.path.join(self.dest_dir, member.filename)
                     
-                    # Конвертуємо та встановлюємо оригінальну дату
+                    # Convert and set the original timestamp
                     date_time = datetime(*member.date_time).timestamp()
                     os.utime(extracted_path, (date_time, date_time))
             
@@ -1388,14 +1374,14 @@ class ArchiveExtractorThread(QThread):
         except Exception as e:
             self.error_signal.emit(self.archive_path, str(e))
         finally:
-            # Видаляємо тимчасовий архів після розпакування або у разі помилки
+            # Delete temporary archive after extraction or on failure
             if os.path.exists(self.archive_path):
                 try:
                     os.remove(self.archive_path)
                 except OSError:
                     pass
 
-# Потік для пошуку файлів на віддаленому сервері
+# Thread for remote file search
 class SearchThread(QThread):
     result_found = Signal(str)
     search_complete = Signal(int)
@@ -1464,10 +1450,6 @@ class SearchThread(QThread):
     def cancel(self):
         self._is_cancelled = True
 
-
-
-
-
 class ArchiveConflictCheckThread(QThread):
     """
     Перший етап: сканує локальні файли та виконує одну швидку перевірку
@@ -1499,7 +1481,6 @@ class ArchiveConflictCheckThread(QThread):
         password = self.conn_details.get('password')
         key_filename = self.conn_details.get('key_filename')
 
-        # ВИПРАВЛЕННЯ: Ігноруємо порожній key_filename
         if key_filename and key_filename != '' and os.path.exists(key_filename):
             connect_args['key_filename'] = key_filename
             if password:
@@ -1507,7 +1488,6 @@ class ArchiveConflictCheckThread(QThread):
         elif password and password != '':
             connect_args['password'] = password
 
-        # Видаляємо непотрібні ключі
         connect_args.pop('passphrase', None) if 'passphrase' not in connect_args else None
         connect_args.pop('password', None) if 'password' not in connect_args else None
 
@@ -1687,7 +1667,7 @@ class AdaptiveTransferManager(QObject):
         self.MIN_CONCURRENT = 2
         self.RETRY_COOLDOWN_SEC = 0.8
         self.MAX_RETRY_COOLDOWN_SEC = 4.0
-        # Стеля тепер гнучка і береться з налаштувань, але не може бути меншою за мінімум.
+        # Connection ceiling is dynamic from settings, but not lower than minimum.
         self.MAX_CONCURRENT_CAP = max(self.MIN_CONCURRENT, ceiling)
         self.discovered_ceiling = self.MAX_CONCURRENT_CAP
         self.current_limit = self.MIN_CONCURRENT
@@ -1697,7 +1677,7 @@ class AdaptiveTransferManager(QObject):
         self.active_transfers = set()
         self.pending_data = {}
         self.retry_counts = {}
-        # Змінні для керування логуванням
+        # Logging rate control variables
         self.next_log_milestone = 10
         self.last_failure_log_time = 0
         self.last_connection_error_log_time = 0
@@ -1716,13 +1696,13 @@ class AdaptiveTransferManager(QObject):
         self.success_counter += 1
         self.next_retry_allowed_at = 0
 
-        # Якщо кількість успішних передач дорівнює поточному ліміту,
-        # спробуємо обережно збільшити ліміт.
+        # If successful transfers count equals current limit, try to increase limit safely.
+
         if self.success_counter >= self.current_limit:
             new_limit = min(self.current_limit + 1, self.discovered_ceiling)
             if new_limit > self.current_limit:
                 self.current_limit = new_limit
-                # Логуємо збільшення тільки на "круглих" числах, щоб не спамити.
+                # Log limit increase periodically to avoid log spam.
                 # if self.current_limit >= self.next_log_milestone:
                 #     log_msg = lang["ADAPTIVE_LIMIT_INCREASED"].format(limit=self.current_limit)
                 #     self.status_update.emit(log_msg)
@@ -1736,12 +1716,12 @@ class AdaptiveTransferManager(QObject):
         self.active_transfers.discard(transfer_id)
         self.pending_data.pop(transfer_id, None)
         self.retry_counts.pop(transfer_id, None)
-        # Різко зменшуємо ліміт вдвічі, але не нижче мінімального.
+        # Halve the limit on error, down to minimum limit.
         self.current_limit = max(self.MIN_CONCURRENT, int(self.current_limit / 2))
         self.success_counter = 0
         self.next_retry_allowed_at = 0
         
-        # Логуємо з "періодом тиші" у 3 секунди, щоб уникнути спаму.
+        # Log with a 3-second quiet period to avoid spam.
         current_time = time.time()
         if current_time - self.last_failure_log_time > 3:
             log_msg = lang["ADAPTIVE_LIMIT_DECREASED"].format(limit=self.current_limit)
@@ -1756,7 +1736,7 @@ class AdaptiveTransferManager(QObject):
         self.pending_data.pop(transfer_id, None)
         self.retry_counts.pop(transfer_id, None)
         self.next_retry_allowed_at = 0
-        # Просто запускаємо обробку черги, щоб почати наступну передачу
+        # Process the transfer queue to start the next transfer
         self._process_queue()
 
     def report_connection_error(self, transfer_id: str):
@@ -1775,15 +1755,15 @@ class AdaptiveTransferManager(QObject):
             self.delayed_retries.append((ready_at, failed_data))
             QTimer.singleShot(int(retry_delay * 1000), self._process_queue)
         
-        # Знижуємо не тільки поточний ліміт, а й "стелю", оскільки
-        # ми досягли реального ліміту можливостей сервера.
+        # Lower current limit and connection ceiling as server capacity is reached.
+
         new_ceiling = max(self.MIN_CONCURRENT, self.current_limit - 1)
         self.discovered_ceiling = new_ceiling
         self.current_limit = min(self.current_limit, self.discovered_ceiling)
         self.success_counter = 0
         self.next_retry_allowed_at = time.time() + self.RETRY_COOLDOWN_SEC
         
-        # Логуємо з "періодом тиші" у 3 секунди.
+        # Log with a 3-second quiet period to avoid spam.
         current_time = time.time()
         if current_time - self.last_connection_error_log_time > 3:
             log_msg = lang["ADAPTIVE_LIMIT_CEILING_REACHED"].format(ceiling=new_ceiling)
@@ -1825,7 +1805,7 @@ class AdaptiveTransferManager(QObject):
         self.pending_data.clear()
         self.retry_counts.clear()
         self.success_counter = 0
-        # Скидаємо змінні логування
+        # Reset logging control variables
         self.next_log_milestone = 10 
         self.last_failure_log_time = 0
         self.last_connection_error_log_time = 0
@@ -2057,7 +2037,7 @@ class TransfersPanel(QWidget):
                 final_status = lang["COMPLETED"]
                 progress_bar.setObjectName("ProgressBarSuccess")
             else:
-                # ВИПРАВЛЕНО: Чітко перевіряємо, чи повідомлення є саме про скасування
+
                 if message == lang.get("CANCELED", "Canceled"):
                     final_status = lang["CANCELED"]
                     progress_bar.setObjectName("ProgressBarCanceled")
@@ -2128,18 +2108,18 @@ class LogWidget(QWidget):
         layout.addWidget(self.log_browser)
         
     def show_context_menu(self, position):
-        # Створюємо стандартне контекстне меню, яке вже містить "Копіювати"
+        # Create standard context menu with Copy
         menu = self.log_browser.createStandardContextMenu()
         
-        # Додаємо розділювач, щоб візуально відокремити стандартні дії від наших
+        # Add separator to distinguish custom actions
         if menu.actions():
             menu.addSeparator()
 
-        # Додаємо наш власний пункт "Очистити лог"
+        # Add custom Clear Log action
         clear_action = menu.addAction(lang["CLEAR_LOG"])
         clear_action.triggered.connect(self.clear_log)
         
-        # Показуємо оновлене меню
+        # Show updated context menu
         menu.exec(self.log_browser.viewport().mapToGlobal(position))
 
     def add_log_message(self, message):
@@ -2153,24 +2133,24 @@ class LogWidget(QWidget):
 class JsonSettingsManager:
     def __init__(self, config_path=None):
         if config_path is None:
-            # Назва програми, яка буде використовуватись для створення теки
+            # Application name used for configuration directory
             APP_NAME = "SFTPanda"
 
-            # Визначаємо шлях до теки з налаштуваннями залежно від ОС
+            # Determine configuration directory path depending on OS
             if sys.platform == "win32":
-                # Для Windows використовуємо %APPDATA%
+                # Use %APPDATA% on Windows
                 base_dir = os.getenv('APPDATA') or os.path.expanduser('~')
                 config_dir = os.path.join(base_dir, APP_NAME)
             else:
-                # Для Linux, macOS та інших Unix-подібних систем
-                # Використовуємо стандартний шлях ~/.config/
+                # Use ~/.config/ on Linux, macOS, and other Unix-like systems
+                # Use standard path ~/.config/
                 config_dir = os.path.join(os.path.expanduser('~'), '.config', APP_NAME)
 
-            # Створюємо теку, якщо вона не існує.
-            # exist_ok=True запобігає помилці, якщо тека вже є.
+            # Create directory if it does not exist.
+            # exist_ok=True prevents errors if the directory already exists.
             os.makedirs(config_dir, exist_ok=True)
             
-            # Встановлюємо фінальний шлях до файлу налаштувань
+            # Set absolute path to config file
             self.config_path = os.path.join(config_dir, "sftp_settings.json")
         else:
             self.config_path = config_path
@@ -2338,8 +2318,6 @@ class JsonSettingsManager:
         self.settings["speed_limits"]["download_kbps"] = download_kbps
         self.save_settings()
 
-
-
 class SFTPClient:
     def __init__(self):
         self.client = None; self.sftp = None; self.hostname = ""; self.port = 22; self.username = ""
@@ -2354,48 +2332,44 @@ class SFTPClient:
         except FileNotFoundError: return True
         except Exception: return False
 
-    # У класі SFTPClient
     def connect(self, hostname, port, username, password, start_directory="/", key_filename=None):
         try:
             self.hostname = hostname
             self.port = port
             self.username = username
-            # Зберігаємо пароль/парольну фразу для перепідключення
+            # Store password/passphrase for reconnects
             self.password = password 
             self.start_directory = start_directory
             
             self.client = paramiko.SSHClient()
             self.client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
 
-            # --- ПОЧАТОК ЗМІН: Динамічно збираємо аргументи для підключення ---
             connect_args = {
                 'hostname': hostname,
                 'port': port,
                 'username': username,
-                'timeout': 15  # Рекомендую додати таймаут
+                'timeout': 15  # Connection timeout
             }
 
             if key_filename and os.path.exists(key_filename):
                 connect_args['key_filename'] = key_filename
-                # Якщо введено пароль, він використовується як парольна фраза для ключа
+                # Use password as passphrase for key file if provided
                 if password:
                     connect_args['passphrase'] = password
             else:
-                # Інакше використовуємо звичайну автентифікацію за паролем
+                # Otherwise fallback to password authentication
                 connect_args['password'] = password
             
-            # Видаляємо пусті значення, щоб уникнути помилок paramiko
+            # Remove None values to avoid Paramiko parameter errors
             if not password:
                 connect_args.pop('passphrase', None)
                 connect_args.pop('password', None)
 
             self.client.connect(**connect_args)
             
-            # --- ПОЧАТОК ЗМІН: Keep-Alive для утримання з'єднання активним ---
             transport = self.client.get_transport()
             if transport:
-                transport.set_keepalive(30)  # Відправляти пусті пакети кожні 30 секунд
-            # --- КІНЕЦЬ ЗМІН ---
+                transport.set_keepalive(30)  # Send keep-alive packets every 30 seconds
 
             self.sftp = self.client.open_sftp()
             if start_directory:
@@ -2403,7 +2377,7 @@ class SFTPClient:
                 self.sftp.chdir(start_directory)
             
             self.connected = True
-            # Зберігаємо всі деталі, включно з ключем, для перепідключень
+            # Save details including key path for reconnects
             self.connection_details = {
                 "hostname": hostname, "port": port, "username": username,
                 "password": password, "start_directory": start_directory,
@@ -2581,32 +2555,29 @@ class SFTPClient:
     def download_for_edit(self, remote_file, editor_path):
         if not self.sftp: return False, lang["NOT_CONNECTED_TO_SERVER"]
         try:
-            # Базова тимчасова директорія
+            # Base temporary directory
             temp_dir = os.path.expanduser("~/.sftp_client/temp")
             
-            # Визначаємо повний шлях до файлу на сервері
+            # Determine full remote path
             remote_path = remote_file if remote_file.startswith("/") else f"{self.current_directory}/{remote_file}"
 
-            # --- ПОЧАТОК ЗМІН ---
-            # Відтворюємо структуру директорій сервера всередині тимчасової папки.
+            # Recreate remote directory structure inside temporary folder.
 
-            # 1. Готуємо відносний шлях, видаляючи початковий слеш
+            # 1. Prepare relative path by removing leading slash
             relative_remote_path = remote_path[1:] if remote_path.startswith('/') else remote_path
-            # Додатково замінюємо ":" на випадок, якщо шлях містить щось схоже на диск Windows
+            # Replace colon to prevent path resolution issues on Windows
             relative_remote_path = relative_remote_path.replace(':', '_')
 
-            # 2. Створюємо повний локальний шлях, що дублює структуру сервера
+            # 2. Form full local path matching remote hierarchy
             local_path = os.path.join(temp_dir, relative_remote_path)
             
-            # 3. КЛЮЧОВИЙ КРОК: Створюємо всі необхідні піддиректорії для файлу
             local_file_dir = os.path.dirname(local_path)
             os.makedirs(local_file_dir, exist_ok=True)
-            # --- КІНЕЦЬ ЗМІН ---
 
-            # Завантажуємо файл у новостворений шлях
+            # Download file to the local path
             self.sftp.get(remote_path, local_path)
             
-            # Розбиваємо шлях до редактора на команду та аргументи
+            # Split editor path into command and arguments
             command_parts = shlex.split(editor_path)
             command_parts.append(local_path)
             
@@ -2671,7 +2642,7 @@ class SFTPClient:
         if not self.client:
             return 0, "Клієнт не підключено"
         try:
-            # -k: розміри в 1K блоках, -P: POSIX формат для стабільного парсингу
+            # -k: size in 1K blocks, -P: POSIX format for stable parsing
             command = f'cd {shlex.quote(self.current_directory)} && df -kP .'
             stdin, stdout, stderr = self.client.exec_command(command, timeout=15)
             exit_status = stdout.channel.recv_exit_status()
@@ -2682,10 +2653,10 @@ class SFTPClient:
 
             lines = stdout.read().decode('utf-8', 'ignore').strip().splitlines()
             if len(lines) > 1:
-                # Вивід: Filesystem 1024-blocks Used Available Capacity Mounted on
+                # Output format: Filesystem 1024-blocks Used Available Capacity Mounted on
                 parts = lines[1].split()
                 if len(parts) >= 4 and parts[3].isdigit():
-                    # parts[3] - це 'Available' в кілобайтах
+                    # parts[3] is the Available space in KB
                     return int(parts[3]) * 1024, None
             return 0, "Не вдалося розпарсити вивід команди 'df'"
         except Exception as e:
@@ -2694,22 +2665,22 @@ class SFTPClient:
     def create_zip_archive(self, files, archive_name):
         if not self.client: return False, lang["NOT_CONNECTED_TO_SERVER"]
         try:
-            # 1. Перевірка наявності утиліти zip
+            # 1. Verify if 'zip' utility is available
             if not self.check_command_exists("zip"): return False, "MISSING_ZIP"
             
-            # 2. Отримання необхідного розміру
+            # 2. Calculate target archive size
             required_size, error = self.get_remote_items_size(files)
             if error: return False, f"Не вдалося визначити розмір: {error}"
 
-            # 3. Отримання доступного місця
+            # 3. Retrieve available disk space
             available_space, error = self.get_available_space()
             if error: return False, f"Не вдалося перевірити місце: {error}"
             
-            # 4. Порівняння розмірів (з невеликим запасом 1%)
+            # 4. Verify size with a 1% safety margin
             if required_size * 1.01 > available_space:
                 return False, f"INSUFFICIENT_SPACE:{required_size}"
 
-            # 5. Створення архіву, якщо місця достатньо
+            # 5. Create archive if space is sufficient
             if not archive_name.lower().endswith(".zip"): archive_name += ".zip"
             command = f'cd "{self.current_directory}" && zip -r "{archive_name}" {" ".join([f"{shlex.quote(f)}" for f in files])}'
             stdin, stdout, stderr = self.client.exec_command(command); exit_status = stdout.channel.recv_exit_status()
@@ -2787,30 +2758,28 @@ class SFTPClient:
                 return False, lang["ERROR_CHANGING_GROUP"].format(error=error)
         except Exception as e: return False, lang["ERROR_CHANGING_GROUP"].format(error=str(e))
 
-
 class ServerManager:
     def __init__(self, settings_manager=None):
         self.settings_manager = settings_manager; self.servers = []; self.load_servers()
     
-    # У класі ServerManager
     def get_server_credentials(self, server_name):
         """ Отримує дані сервера з JSON і додає пароль із keyring. """
-        server_data = self.get_server(server_name) # Ваш існуючий метод get_server
+        server_data = self.get_server(server_name)
         if not server_data:
             return None
 
         try:
-            # Отримуємо пароль із системного сховища
+            # Retrieve password from system keyring
             password = keyring.get_password(APP_SERVICE_NAME, server_name)
             
-            # Створюємо копію, щоб не змінювати оригінальний словник
+            # Copy to avoid mutating original dictionary
             credentials = server_data.copy()
             credentials['password'] = password
             return credentials
 
         except Exception as e:
             print(f"Не вдалося отримати пароль із системного сховища: {e}")
-            return server_data # Повертаємо дані без пароля у разі помилки
+            return server_data # Return configuration without password on keyring error
 
     def load_servers(self):
         if self.settings_manager:
@@ -2822,13 +2791,12 @@ class ServerManager:
         if self.settings_manager: self.settings_manager.settings["servers"] = self.servers; return self.settings_manager.save_settings()
         return False
     
-    # У класі ServerManager
     def add_server(self, server_data):
-        # Витягуємо пароль з даних, щоб не зберігати його в JSON
+        # Extract password to prevent JSON serialization
         password = server_data.pop('password', None)
         server_name = server_data['name']
 
-        # Зберігаємо або оновлюємо дані сервера (БЕЗ пароля) в списку
+        # Store or update server details (without password) in list
         server_found = False
         for i, server in enumerate(self.servers):
             if server['name'] == server_name:
@@ -2840,26 +2808,26 @@ class ServerManager:
         if not server_found:
             self.servers.append(server_data)
 
-        self.save_servers() # Цей метод тепер зберігає JSON без пароля
+        self.save_servers() # This method writes config file without password
 
-        # Якщо пароль був наданий, зберігаємо його в системному сховищі
+        # Save password to system keyring if provided
         if password is not None:
             try:
                 keyring.set_password(APP_SERVICE_NAME, server_name, password)
             except Exception as e:
-                # Бажано обробити помилку, якщо keyring не працює
+                # Handle keyring exceptions gracefully
                 print(f"Не вдалося зберегти пароль у системному сховищі: {e}")
     
     def remove_server(self, server_name):
-        # Видаляємо дані сервера з JSON
+        # Remove server details from list
         self.servers = [s for s in self.servers if s['name'] != server_name]
         self.save_servers()
         
-        # Видаляємо пароль із системного сховища
+        # Remove password from system keyring
         try:
             keyring.delete_password(APP_SERVICE_NAME, server_name)
         except keyring.errors.PasswordDeleteError:
-            # Пароль міг бути вже видалений, це нормально
+            # Password might have been deleted already
             pass
         except Exception as e:
             print(f"Помилка при видаленні пароля із системного сховища: {e}")
@@ -2892,7 +2860,6 @@ class GroupInfoFetcherThread(QThread):
                     if name not in ['.', '..']: groups_info[name] = group
             if groups_info: self.groups_fetched.emit(groups_info)
         except Exception as e: self.error.emit(lang["ERROR_FETCHING_GROUPS"].format(e=str(e)))
-
 
 class FileTableModel(QAbstractTableModel):
     rename_failed = Signal(str, str)
@@ -3068,8 +3035,8 @@ class RemoteTableView(QTableView):
         if not urls:
             return
 
-        # Перевіряємо затиснуті модифікатори безпосередньо перед початком перетягування,
-        # оскільки після завершення drag.exec() стан клавіш може змінитися.
+        # Check active modifiers immediately before drag starts
+        # since keyboard state might change after drag completes.
         is_fast_mode = bool(QApplication.keyboardModifiers() & Qt.ControlModifier)
 
         mime_data = QMimeData()
@@ -3078,21 +3045,21 @@ class RemoteTableView(QTableView):
         drag = QDrag(self)
         drag.setMimeData(mime_data)
 
-        # Запускаємо перетягування (підтримуємо як копіювання, так і переміщення)
+        # Start drag execution (supports Copy and Move)
         drag.exec(Qt.CopyAction | Qt.MoveAction)
 
-        # Оскільки Windows Explorer може повертати IgnoreAction при успішному перетягуванні локальних тимчасових файлів,
-        # ми орієнтуємося на наявність відкритого Провідника/Робочого столу під курсором.
+        # Fallback logic for Windows Explorer returning IgnoreAction on local temp files
+        # by verifying if Explorer or Desktop is under the cursor.
         explorer_path = self.get_explorer_path_under_cursor()
         if explorer_path and os.path.isdir(explorer_path):
             if is_fast_mode:
-                # Швидке завантаження через створення та скачування архіву
+                # Quick download via server-side archiving
                 self.main_window._initiate_server_side_archiving(selected_files, explorer_path)
             else:
-                # Звичайне завантаження через чергу передач
+                # Standard download queued via transfers queue
                 self.main_window.download_selected_items(selected_files, preselected_dir=explorer_path)
 
-        # Очищуємо тимчасові файли-заглушки
+        # Clean temporary stub files
         for path, is_dir in temp_paths:
             try:
                 if is_dir:
@@ -3109,7 +3076,7 @@ class RemoteTableView(QTableView):
         user32 = ctypes.windll.user32
         ole32 = ctypes.windll.ole32
         
-        # Налаштовуємо типи аргументів та результатів для коректної роботи на 64-бітних системах
+        # Configure ctypes arguments and return types for x64 compatibility
         user32.GetCursorPos.argtypes = [ctypes.POINTER(wintypes.POINT)]
         user32.GetCursorPos.restype = wintypes.BOOL
         
@@ -3145,7 +3112,7 @@ class RemoteTableView(QTableView):
             shell = win32com.client.Dispatch("Shell.Application")
             windows = shell.Windows()
             
-            # Якщо це робочий стіл
+            # Desktop folder case
             class_name = ctypes.create_unicode_buffer(256)
             user32.GetClassNameW(hwnd, class_name, 256)
             if class_name.value in ["Progman", "WorkerW"]:
@@ -3166,7 +3133,7 @@ class RemoteTableView(QTableView):
         return None
 
     def dragEnterEvent(self, event):
-        # Ігноруємо перетягування всередині самої таблиці сервера
+        # Ignore drag and drop inside the server table
         if event.source() == self:
             event.ignore()
             return
@@ -3176,7 +3143,7 @@ class RemoteTableView(QTableView):
             event.ignore()
 
     def dragMoveEvent(self, event):
-        # Ігноруємо перетягування всередині самої таблиці сервера
+        # Ignore drag and drop inside the server table
         if event.source() == self:
             event.ignore()
             return
@@ -3205,8 +3172,6 @@ class RemoteTableView(QTableView):
             
         event.acceptProposedAction()
 
-
-    
 class PermissionsDialog(BaseDialog):
     def __init__(self, parent=None, current_permissions="644", is_dir=False):
         super().__init__(parent, window_title=lang["CHANGE_PERMISSIONS_TITLE"])
@@ -3257,14 +3222,13 @@ class DuplicateDialog(QDialog):
     
     def get_new_name(self): return self.new_name_edit.text()
 
-
 class ServerDialog(QDialog):
     def __init__(self, parent=None, server_data=None):
         super().__init__(parent)
         self.setWindowTitle(lang["SERVER_SETTINGS_TITLE"])
         self.setMinimumWidth(450)
 
-        # Додаємо атрибути для обробки пароля
+        # Add fields for password handling
         self.existing_password_placeholder = "••••••••"
         self.is_editing = server_data is not None
 
@@ -3309,21 +3273,19 @@ class ServerDialog(QDialog):
             self.port_spin.setValue(server_data.get("port", 22))
             self.username_edit.setText(server_data.get("username", ""))
             
-            # ВИПРАВЛЕННЯ: Встановлюємо заглушку, якщо пароль існує
             if server_data.get("password"):
                 self.password_edit.setText(self.existing_password_placeholder)
             else:
-                self.password_edit.setText("") # Інакше поле порожнє
+                self.password_edit.setText("") # Otherwise leave field empty
                 
             self.directory_edit.setText(server_data.get("directory", "/"))
             self.key_path_edit.setText(server_data.get("key_filename", ""))
 
-    # --- ДОДАНО НОВИЙ МЕТОД ---
     def browse_for_key(self):
         file_path, _ = QFileDialog.getOpenFileName(
             self,
             lang["SELECT_SSH_KEY_TITLE"],
-            os.path.expanduser("~/.ssh"), # Починаємо пошук у стандартній теці SSH
+            os.path.expanduser("~/.ssh"), # Start search in default SSH directory
             lang["SSH_KEY_FILES_FILTER"]
         )
         if file_path:
@@ -3332,20 +3294,19 @@ class ServerDialog(QDialog):
     def get_server_data(self):
         password = self.password_edit.text()
         
-        # ВИПРАВЛЕННЯ: Додаємо логіку обробки заглушки
-        # Якщо ми редагуємо і текст у полі - це наша заглушка,
-        # значить користувач не змінював пароль. Повертаємо None, щоб це позначити.
+        # If editing and text matches stub, password is unchanged. Return None.
+
         if self.is_editing and password == self.existing_password_placeholder:
-            password_to_save = None  # Сигнал "не змінювати пароль"
+            password_to_save = None  # Signal: password unchanged
         else:
-            password_to_save = password # Інакше беремо нове значення (може бути порожнім)
+            password_to_save = password # Otherwise fetch the new password value
 
         return {
             "name": self.name_edit.text(),
             "host": self.host_edit.text(),
             "port": self.port_spin.value(),
             "username": self.username_edit.text(),
-            "password": password_to_save, # Передаємо оброблене значення
+            "password": password_to_save, # Submit the processed value
             "directory": self.directory_edit.text(),
             "key_filename": self.key_path_edit.text()
         }
@@ -3381,7 +3342,7 @@ class ServerListWidget(QWidget):
             self.server_list.addItem(item)
     
     def add_server(self, server_data):
-        # Пароль тепер може бути рядком (новий/порожній) або None (без змін)
+        # Password can be a string (new/empty) or None (unchanged)
         password = server_data.pop('password', None)
         server_name = server_data['name']
 
@@ -3398,9 +3359,8 @@ class ServerListWidget(QWidget):
 
         self.save_servers()
 
-        # ВИПРАВЛЕННЯ: Змінюємо пароль у сховищі, тільки якщо він НЕ None.
-        # Якщо password - це рядок (навіть порожній), keyring буде оновлено.
-        # Якщо password - це None, цей блок коду пропускається, і старий пароль залишається.
+        # If password is a string, update keyring.
+        # If password is None, keep existing password.
         if password is not None:
             try:
                 keyring.set_password(APP_SERVICE_NAME, server_name, password)
@@ -3413,7 +3373,7 @@ class ServerListWidget(QWidget):
             QMessageBox.warning(self, lang["WARNING"], lang["SELECT_SERVER_TO_EDIT"])
             return
         server_name = selected_items[0].text()
-        # ВИПРАВЛЕННЯ: Використовуємо get_server_credentials для отримання пароля з keyring
+
         server_data = self.server_manager.get_server_credentials(server_name)
         if server_data:
             dialog = ServerDialog(self, server_data=server_data)
@@ -3468,24 +3428,22 @@ class BookmarkDialog(QDialog):
             else: name = "/"
         return {"name": name, "path": path}
 
-# ЗАМІНІТЬ ВАШ СТАРИЙ КЛАС OverwriteDialog НА ЦЕЙ НОВИЙ КЛАС
 class AdvancedOverwriteDialog(BaseDialog):
     def __init__(self, filename, source_meta, dest_meta, direction, parent=None):
         super().__init__(parent, window_title=lang["CONFIRM_OVERWRITE_TITLE"])
         self.choice = 'cancel'
         
-        # --- 1. Додаємо заголовок та інформацію про файли ---
         self.add_title(lang["FILE_EXISTS_HEADER"], "fa5s.exclamation-triangle", "#faa61a")
         self.add_message(lang["FILE_EXISTS_PROMPT"].format(filename=f"<b>{filename}</b>"))
         
-        # Створюємо сітку для відображення метаданих
+        # Create grid for file metadata comparison
         grid = QGridLayout()
         grid.setContentsMargins(0, 10, 0, 10)
         grid.setColumnStretch(1, 1)
         grid.setColumnStretch(2, 1)
 
-        # Заголовки таблиці
-        grid.addWidget(QLabel(""), 0, 0) # Порожня клітинка
+        # Grid headers
+        grid.addWidget(QLabel(""), 0, 0) # Empty cell spacer
         grid.addWidget(QLabel(f"<b>{lang['HEADER_DATE_MODIFIED']}</b>"), 0, 1)
         grid.addWidget(QLabel(f"<b>{lang['HEADER_SIZE']}</b>"), 0, 2)
 
@@ -3493,41 +3451,39 @@ class AdvancedOverwriteDialog(BaseDialog):
         source_label_text = lang["DIALOG_OVERWRITE_SOURCE_LOCAL"] if is_upload else lang["DIALOG_OVERWRITE_SOURCE_SERVER"]
         dest_label_text = lang["DIALOG_OVERWRITE_SOURCE_SERVER"] if is_upload else lang["DIALOG_OVERWRITE_SOURCE_LOCAL"]
         
-        # Функція для форматування
+        # Helper to format size values
         def format_bytes(size):
             if size >= 1024 * 1024: return f"{size / (1024 * 1024):.2f} {lang['UNIT_MB']}"
             if size >= 1024: return f"{size / 1024:.2f} {lang['UNIT_KB']}"
             return f"{size} {lang['UNIT_BYTES']}"
 
-        # Дані Джерела (Source)
+        # Source file metadata details
         grid.addWidget(QLabel(f"<b>{source_label_text}</b>"), 1, 0)
         grid.addWidget(QLabel(datetime.fromtimestamp(source_meta['mtime']).strftime("%d.%m.%Y %H:%M:%S")), 1, 1)
         grid.addWidget(QLabel(format_bytes(source_meta['size'])), 1, 2)
         
-        # Дані Призначення (Destination)
+        # Destination file metadata details
         grid.addWidget(QLabel(f"<b>{dest_label_text}</b>"), 2, 0)
         grid.addWidget(QLabel(datetime.fromtimestamp(dest_meta['mtime']).strftime("%d.%m.%Y %H:%M:%S")), 2, 1)
         grid.addWidget(QLabel(format_bytes(dest_meta['size'])), 2, 2)
 
         self.content_layout.addLayout(grid)
         
-        # --- 2. Створюємо групу з радіокнопками ---
         options_group = QGroupBox(lang["DIALOG_OVERWRITE_SELECT_ACTION"])
         options_layout = QVBoxLayout(options_group)
         
-        # Опція "Оновити"
+        # Update option (overwrite if source is newer)
         self.update_rb = QRadioButton(lang["DIALOG_OVERWRITE_ACTION_UPDATE"])
         options_layout.addWidget(self.update_rb)
         
-        # Опція "Перезаписати"
+        # Overwrite option
         self.overwrite_rb = QRadioButton(lang["DIALOG_OVERWRITE_ACTION_OVERWRITE"])
         options_layout.addWidget(self.overwrite_rb)
         
-        # Опція "Пропустити"
+        # Skip option
         self.skip_rb = QRadioButton(lang["DIALOG_OVERWRITE_ACTION_SKIP"])
         options_layout.addWidget(self.skip_rb)
         
-        # --- 3. Логіка вибору опції за замовчуванням ---
         if source_meta['mtime'] > dest_meta['mtime']:
             self.update_rb.setChecked(True)
         else:
@@ -3535,7 +3491,6 @@ class AdvancedOverwriteDialog(BaseDialog):
             
         self.content_layout.addWidget(options_group)
         
-        # --- 4. Чекбокс та кнопки ---
         self.apply_to_all_checkbox = StyledCheckBox(lang["APPLY_TO_ALL_CONFLICTS_CHECKBOX"])
         self.content_layout.addWidget(self.apply_to_all_checkbox)
         
@@ -3571,7 +3526,7 @@ class DeleteConfirmationDialog(BaseDialog):
         if num_dirs > 0: self.add_message(lang["DELETE_RECURSIVE_WARNING"], is_warning=True)
         self.footer_layout.addStretch()
         self.add_button(lang["CANCEL"], on_click=self.reject)
-        # --- ЗМІНЕНО: Додано is_default=True ---
+
         self.add_button(lang["DELETE"], is_danger=True, on_click=self.accept, is_default=True)
 
 class ReconnectSettingsDialog(QDialog):
@@ -3592,31 +3547,30 @@ class ReconnectSettingsDialog(QDialog):
         if self.settings_manager: self.settings_manager.set_reconnect_settings(self.enabled_checkbox.isChecked(), self.interval_spin.value(), self.attempts_spin.value())
         super().accept()
 
-# Додайте цей клас у ваш код
 class PasswordPromptDialog(BaseDialog):
     def __init__(self, server_name, parent=None):
         super().__init__(parent, window_title=lang["PASSWORD_LABEL"])
         
-        # Використовуємо ваш кастомний метод для заголовка
+        # Apply custom BaseDialog title
         self.add_title(lang["PASSWORD_LABEL"], icon_name="fa6s.key", icon_color="#b9bbbe")
 
-        # Створюємо віджети
+        # Initialize dialog widgets
         prompt_label = QLabel(lang["PASSWORD_LABEL"] + f" для '<b>{server_name}</b>':")
         self.password_edit = QLineEdit()
         self.password_edit.setEchoMode(QLineEdit.Password)
 
-        # Додаємо віджети в основний лейаут
+        # Add widgets to content layout
         self.content_layout.addWidget(prompt_label)
         self.content_layout.addWidget(self.password_edit)
 
-        # Налаштовуємо кнопки у футері
+        # Setup dialog footer controls
         self.footer_layout.addStretch()
         self.add_button(lang["CANCEL"], on_click=self.reject)
         ok_button = self.add_button(lang["OK"], is_primary=True, on_click=self.accept)
         
-        # Робимо кнопку "ОК" кнопкою за замовчуванням
+        # Set OK as default button
         ok_button.setDefault(True)
-        # Встановлюємо фокус на поле вводу
+        # Focus input field
         self.password_edit.setFocus()
 
     def get_password(self):
@@ -3700,15 +3654,15 @@ class SettingsDialog(QDialog):
         editor_layout.addRow(editor_help)
         layout.addWidget(editor_group)
 
-        # Блок для вибору мови
-        language_group = QGroupBox(lang.get("SETTINGS_LANGUAGE_GROUP", "Language")) # Використовуємо .get для сумісності
+        # Language configuration layout
+        language_group = QGroupBox(lang.get("SETTINGS_LANGUAGE_GROUP", "Language")) # Use .get for safety
         lang_layout = QFormLayout(language_group)
         
         self.lang_combo = QComboBox()
         self.lang_combo.addItem(lang.get("SETTINGS_LANG_NAME_EN", "English"), "en")
         self.lang_combo.addItem(lang.get("SETTINGS_LANG_NAME_UA", "Українська"), "ua")
         
-        # Встановлюємо поточну мову
+        # Apply active language
         current_lang_code = self.settings_manager.get_language()
         index = self.lang_combo.findData(current_lang_code)
         if index != -1:
@@ -3750,22 +3704,20 @@ class SettingsDialog(QDialog):
         layout.addStretch()
         self.tab_widget.addTab(tab, lang["SETTINGS_TAB_FILES"])
 
-    # У класі SettingsDialog, замініть цей метод
     def create_transfers_tab(self):
         tab = QWidget()
         layout = QVBoxLayout(tab)
         layout.setContentsMargins(0, 15, 0, 15)
 
-        # --- ЗМІНЕНО: Група тепер налаштовує стелю для адаптивного режиму ---
         transfers_group = QGroupBox(lang["SETTINGS_ADAPTIVE_MODE_GROUP"])
         transfers_layout = QFormLayout(transfers_group)
         
         self.max_transfers_spin = StyledSpinBox()
-        # Новий діапазон: від 2 до 100. Значення 0 (старий авто-режим) більше не потрібне.
+        # Range: 2 to 100 connections.
         self.max_transfers_spin.setRange(2, 100)
         
         current_val = self.settings_manager.get_max_concurrent_transfers()
-        # Якщо стоїть старе значення "0" або "1", встановлюємо розумний дефолт (напр., 20)
+        # Fallback logic for legacy values of 0 or 1
         if current_val < 2:
             current_val = 20
         self.max_transfers_spin.setValue(current_val)
@@ -3775,9 +3727,8 @@ class SettingsDialog(QDialog):
         transfers_help.setWordWrap(True)
         transfers_layout.addRow(transfers_help)
         layout.addWidget(transfers_group)
-        # --- КІНЕЦЬ ЗМІН ---
 
-        # Існуюча група для обмеження швидкості залишається без змін
+        # Bandwidth speed limit controls
         speed_group = QGroupBox(lang["SETTINGS_SPEED_LIMIT_GROUP"])
         speed_layout = QFormLayout(speed_group)
         current_limits = self.settings_manager.get_speed_limit_settings()
@@ -3804,7 +3755,7 @@ class SettingsDialog(QDialog):
         
         layout.addWidget(speed_group)
         layout.addStretch()
-        # --- ВИПРАВЛЕНО ТИПОДРУК: 'TRANSfers' -> 'TRANSFERS' ---
+
         self.tab_widget.addTab(tab, lang["SETTINGS_TAB_TRANSFERS"])
 
     def create_reconnect_tab(self):
@@ -4057,11 +4008,11 @@ class MainWindow(QMainWindow):
         self.server_manager = ServerManager(self.settings_manager)
         
         self.sftp_lock = threading.Lock()
-        # ДОДАЙТЕ ЦІ РЯДКИ
+
         self.dir_history = []
         self.dir_history_index = -1
         self.is_navigating_history = False
-        # КІНЕЦЬ ДОДАВАННЯ
+
         self.initial_sort_applied = False
         self.edited_files = {}
         self.file_watcher = QFileSystemWatcher()
@@ -4091,7 +4042,6 @@ class MainWindow(QMainWindow):
         self.active_search_threads = {}
         self.startup_cleanup_thread = None
 
-        # --- Створення UI ---
         self.central_widget = QWidget()
         self.setCentralWidget(self.central_widget)
         self.main_layout = QVBoxLayout(self.central_widget)
@@ -4106,7 +4056,6 @@ class MainWindow(QMainWindow):
         self.left_splitter.addWidget(self.event_log_widget)
         self.left_splitter.setSizes([int(self.height() * 0.4), int(self.height() * 0.6)])
         
-        # --- Створення віджета для файлового браузера (Сторінка 1) ---
         self.remote_widget = QWidget()
         remote_layout = QVBoxLayout(self.remote_widget)
         remote_layout.setContentsMargins(1, 5, 5, 5)
@@ -4156,18 +4105,16 @@ class MainWindow(QMainWindow):
             self.back_button = QPushButton("<-")
             self.forward_button = QPushButton("->")
 
-        self.back_button.setToolTip(lang["HISTORY_BACK"]) # ВИКОРИСТОВУЄМО ПЕРЕКЛАД
+        self.back_button.setToolTip(lang["HISTORY_BACK"])
         self.back_button.setFixedSize(28, 28)
         self.back_button.setEnabled(False)
 
-        self.forward_button.setToolTip(lang["HISTORY_FORWARD"]) # ВИКОРИСТОВУЄМО ПЕРЕКЛАД
+        self.forward_button.setToolTip(lang["HISTORY_FORWARD"])
         self.forward_button.setFixedSize(28, 28)
         self.forward_button.setEnabled(False)
 
-        # Додаємо нові кнопки на панель
         path_layout.addWidget(self.back_button)
         path_layout.addWidget(self.forward_button)
-        # --- КІНЕЦЬ ДОДАВАННЯ --
 
         path_layout.addWidget(self.path_stack)
         path_layout.addWidget(self.bookmark_action_button)
@@ -4184,22 +4131,18 @@ class MainWindow(QMainWindow):
         
         remote_layout.addWidget(self.remote_table)
         
-        # --- Створення віджета зі списком серверів (Сторінка 2) ---
         self.server_list_widget = ServerListWidget(self.server_manager)
         
-        # --- Створення QStackedWidget для перемикання ---
         self.right_panel_stack = QStackedWidget()
         self.right_panel_stack.addWidget(self.remote_widget)
         self.right_panel_stack.addWidget(self.server_list_widget)
 
-        # --- Додавання елементів у головний спліттер ---
         self.main_splitter.addWidget(self.left_splitter)
         self.main_splitter.addWidget(self.right_panel_stack)
         self.main_splitter.setSizes([350, 850])
         
         self.main_layout.addWidget(self.main_splitter)
 
-        # --- Встановлюємо початковий вигляд (список серверів) ---
         self.right_panel_stack.setCurrentWidget(self.server_list_widget)
         
         self.setup_ui_components()
@@ -4217,10 +4160,10 @@ class MainWindow(QMainWindow):
         if count == 0:
             return prefix
 
-        # Для списку рядків (шляхів) отримуємо базові імена
+        # Extract basenames for files/directories lists
         if isinstance(selected_items[0], str):
             first_item_name = os.path.basename(selected_items[0])
-        # Для списку словників (інформації про файли) беремо з ключа 'name'
+        # Retrieve file names from details list dictionaries
         else:
             first_item_name = selected_items[0]['name']
 
@@ -4254,16 +4197,15 @@ class MainWindow(QMainWindow):
             self.worker_threads.append(dir_thread)
             dir_thread.start()
         else:
-            # Якщо папок для створення немає, одразу переходимо до перевірки конфліктів
+            # Proceed to conflicts check if no directories need to be created
             self.start_conflict_resolution(task_id, files_found)
 
     def _fallback_to_standard_download(self, selected_files, destination_dir):
         """Запускає стандартне (пофайлове) скачування."""
         self.log_event_message(lang["MAINWINDOW_INSUFFICIENT_SPACE_LOG"].format(required_space="..."))
-        # Просто викликаємо існуючий метод, який вже вміє обробляти такі завдання
+
         self.download_selected_items(selected_files)
 
-    # Додайте цей новий метод у клас MainWindow
     def _post_connection_setup(self, restore_session=False):
         """Виконує дії після підключення та завершення всіх попередніх завдань (як очищення)."""
         path_to_load = None
@@ -4293,7 +4235,7 @@ class MainWindow(QMainWindow):
         files_to_delete = self.settings_manager.get_pending_cleanup_files(server_name)
         
         if not files_to_delete:
-            # Якщо файлів для очищення немає, одразу викликаємо функцію
+            # Trigger completion directly if cleanup list is empty
             on_finish_callback()
             return
 
@@ -4319,13 +4261,11 @@ class MainWindow(QMainWindow):
                             print(lang["MAINWINDOW_CLEANUP_ERROR"].format(path=path, msg=msg))
 
         self.cleanup_thread = CleanupThread(self.sftp_client, self.settings_manager, server_name, files_to_delete)
-        # ПІДПИСУЄМОСЯ НА СИГНАЛ ЗАВЕРШЕННЯ ПОТОКУ
+
         self.cleanup_thread.finished.connect(on_finish_callback)
-        self.cleanup_thread.finished.connect(self.refresh_remote) # оновлення списку файлів все ще потрібне
+        self.cleanup_thread.finished.connect(self.refresh_remote) # file list refresh is required
         self.cleanup_thread.start()
     
-
-
     def load_remote_files(self):
         if not self.sftp_client.sftp: return
 
@@ -4485,7 +4425,6 @@ class MainWindow(QMainWindow):
             self._start_fast_archive_upload(local_paths, destination_path)
             return
 
-        # --- ЗМІНЕНО: Використовуємо новий генератор для створення заголовка ---
         task_name = self._generate_smart_task_name(local_paths, lang["UPLOADING"])
         task_id = f"task_upload_batch_{time.time()}"
 
@@ -4516,7 +4455,6 @@ class MainWindow(QMainWindow):
         
         task_id = f"task_fast_upload_{time.time()}"
         
-        # --- ЗМІНЕНО: Використовуємо "розумний" генератор для створення заголовка ---
         task_name = self._generate_smart_task_name(local_paths, lang["QUICK_UPLOAD_TASK_TITLE"])
         
         self.transfer_tasks[task_id] = {
@@ -4654,10 +4592,10 @@ class MainWindow(QMainWindow):
             return
 
         task["files"] = file_list
-        # Сумуємо розмір з 4-го елемента кортежу (індекс 3)
+        # Sum transfer sizes from metadata
         task["total_size"] = sum(item[3] for item in file_list)
         
-        # Зберігаємо стабільний номер файла в межах задачі, щоб retry не ламали лічильник.
+        # Maintain consistent file index within task boundaries
         for file_index, (source, target, mtime, size) in enumerate(file_list, start=1):
             transfer_id = f"file_{os.path.basename(source)}_{time.time()}_{file_index}"
             self.transfer_queue.append((task_id, transfer_id, source, target, size, file_index))
@@ -4780,33 +4718,29 @@ class MainWindow(QMainWindow):
 
     def _handle_connection_failure(self, task_id, transfer_id, message):
         self.active_file_transfers.pop(transfer_id, None)
-        # Повідомлення тепер генерується менеджером, тому тут воно не потрібне
+
         if self.adaptive_manager:
             self.adaptive_manager.report_connection_error(transfer_id)
 
     def _process_transfer_queue(self):
         if not self.sftp_client.sftp: return
 
-        # --- ПОЧАТОК КАРДИНАЛЬНИХ ЗМІН: ЗАВЖДИ ВИКОРИСТОВУЄМО АДАПТИВНИЙ РЕЖИМ ---
-        # Складна і ненадійна логіка if/else повністю видалена.
-
-        # Створюємо менеджер, якщо його ще немає
+        # Initialize transfer manager if active
         if not self.adaptive_manager:
-            # Отримуємо з налаштувань максимальну стелю, яку встановив користувач
+            # Retrieve connection ceiling from configuration
             ceiling = self.settings_manager.get_max_concurrent_transfers()
-            # Передаємо цю стелю нашому менеджеру
+            # Apply connection limits to manager
             self.adaptive_manager = AdaptiveTransferManager(ceiling=ceiling)
             self.adaptive_manager.request_new_transfer.connect(self._start_transfer_thread)
             self.adaptive_manager.status_update.connect(
                 lambda msg: self.log_event_message(msg, level='warning')
             )
 
-        # Якщо в головній черзі є файли, передаємо їх менеджеру
+        # Submit queued tasks to transfer manager
         if self.transfer_queue:
             items_to_add = self.transfer_queue
             self.transfer_queue = []
             self.adaptive_manager.add_transfers(items_to_add)
-        # --- КІНЕЦЬ ЗМІН ---
 
     def _handle_file_progress(self, task_id, transfer_id, transferred_bytes, total_bytes):
         task = self.transfer_tasks.get(task_id)
@@ -4838,7 +4772,6 @@ class MainWindow(QMainWindow):
         if not task:
             return
 
-        # Визначаємо, чи було це скасування користувачем
         is_user_cancellation = not success and message == lang.get("CANCELED")
         is_network_error = (not success) and any(keyword in message.lower() for keyword in 
                              ["timeout", "connection reset", "broken pipe",
@@ -4849,10 +4782,10 @@ class MainWindow(QMainWindow):
             if success:
                 self.adaptive_manager.report_success(transfer_id)
             elif is_user_cancellation:
-                # Нова логіка: повідомляємо менеджеру про скасування без штрафів
+                # Notify transfer manager of safe task abort
                 self.adaptive_manager.report_cancellation(transfer_id)
             else:
-                # Тимчасові помилки мережі обробляються м'якше: файл автоматично повертається в чергу.
+                # Retry transient connection failures automatically
                 if is_network_error:
                     self.adaptive_manager.report_connection_error(transfer_id)
                 else:
@@ -4885,28 +4818,28 @@ class MainWindow(QMainWindow):
             log_msg = lang["MAINWINDOW_TRANSFER_RETRY_LOG"].format(filename=filename, message=message)
             self.log_event_message(log_msg, level='warning')
         elif not is_user_cancellation:
-            # Рахуємо помилки, тільки якщо це не скасування і не автоматичний ретрай
+            # Log transfer errors only on verified exceptions
             log_msg = lang["MAINWINDOW_TRANSFER_ERROR_LOG"].format(filename=filename, message=message)
             self.log_event_message(log_msg, level='error')
             task["files_failed"] = task.get("files_failed", 0) + 1
         
         processed_files = task["files_completed"] + task.get("files_failed", 0)
         total_files_in_task = len(task.get("files", []))
-        # Визначаємо, чи завершено завдання. Скасовані файли не враховуються у processed_files,
-        # тому перевіряємо прапорець is_cancelled
+        # Verify if all files processed (excluding cancelled items)
+        # by validating the cancelled state flags
         is_task_finished = (processed_files >= total_files_in_task and total_files_in_task > 0) or task.get("is_cancelled")
 
         if not is_task_finished:
             self._refresh_task_active_file_display(task_id)
         
-        # Завершуємо завдання, лише якщо воно дійсно закінчилось і ще існує
+        # Complete task scope if queue is empty
         if is_task_finished and task_id in self.transfer_tasks:
             self.fixed_mode_banner_errors = 0
             self.fallback_to_adaptive_triggered = False
             failed_count = task.get("files_failed", 0)
             
             if task.get("is_cancelled"):
-                # Якщо завдання було скасовано, показуємо відповідний статус
+                # Display status if the task was aborted
                 self.transfers_panel.complete_transfer(task_id, False, lang["CANCELED"])
             elif failed_count > 0:
                 final_message = lang["MAINWINDOW_TASK_COMPLETED_WITH_ERRORS"].format(failed_count=failed_count, total_files=total_files_in_task)
@@ -4947,51 +4880,50 @@ class MainWindow(QMainWindow):
         QMessageBox.warning(self, lang["MAINWINDOW_EXTRACT_ERROR_TITLE"], log_msg)
 
     def cancel_transfer(self, task_id):
-        # 1. Скасовуємо потік пошуку файлів, якщо він активний для цього завдання
+        # 1. Terminate search threads related to this task
         if task_id in self.active_search_threads:
             thread = self.active_search_threads.pop(task_id, None)
             if thread and thread.isRunning():
                 thread.cancel()
-                thread.wait(500) # Даємо трохи часу на завершення
+                thread.wait(500) # Allow thread teardown time window
 
         task = self.transfer_tasks.get(task_id)
         if task:
             task["is_cancelled"] = True
             self.log_event_message(lang["MAINWINDOW_CANCELING_TASK"].format(name=task['name']))
             
-            # 2. Скасовуємо будь-який активний фоновий потік (сканер, перевірка конфліктів)
+            # 2. Abort running background scans and conflict checks
             worker_thread = task.get('worker_thread')
             if worker_thread and hasattr(worker_thread, 'cancel') and worker_thread.isRunning():
                 worker_thread.cancel()
                 worker_thread.wait(500)
 
-        # 3. Скасовуємо активні потоки передачі файлів
+        # 3. Terminate active file transfer processes
         for tid, thread in list(self.active_file_transfers.items()):
             if hasattr(thread, 'task_id') and thread.task_id == task_id:
-                thread.cancel()  # Новий метод cancel тепер надійний
+                thread.cancel()
 
-        # 4. Очищуємо черги
+        # 4. Clear queue structures
         self.transfer_queue = [item for item in self.transfer_queue if item[0] != task_id]
         
-        # 5. Скидаємо стан адаптивного менеджера, щоб він не завис
+        # 5. Reset adaptive manager properties
         if self.adaptive_manager:
             self.adaptive_manager.reset()
 
-        # 6. Завершуємо завдання в UI
+        # 6. Update UI task representation to completed
         if task_id in self.transfer_tasks:
             self.transfers_panel.complete_transfer(task_id, False, lang["CANCELED"])
-            # Видаляємо завдання зі списку, щоб уникнути подальшої обробки
+            # Remove task from tracking map to prevent further callbacks
             del self.transfer_tasks[task_id]
                 
     def handle_conflict_resolution_complete(self, task_id, non_conflicts, conflicts):
         task = self.transfer_tasks.get(task_id)
         if not task: return
 
-        # ВИРІШЕННЯ: Видаляємо посилання на потік, оскільки він завершив свою роботу.
         if 'worker_thread' in task:
             del task['worker_thread']
 
-        # non_conflicts вже містить правильні кортежі з 4 елементів
+        # non_conflicts already formatted in 4-item tuples
         final_list_to_transfer = list(non_conflicts)
         
         if conflicts:
@@ -5026,7 +4958,7 @@ class MainWindow(QMainWindow):
                 if action == 'overwrite':
                     final_list_to_transfer.append(item_to_transfer)
                 elif action == 'update':
-                    # ПОРІВНЮЄМО ТІЛЬКИ ЦІЛУ ЧАСТИНУ ЧАСУ (СЕКУНДИ), ІГНОРУЮЧИ МІЛІСЕКУНДИ
+                    # Compare timestamps using integers (seconds precision only)
                     if int(conflict['source_meta']['mtime']) > int(conflict['dest_meta']['mtime']):
                         final_list_to_transfer.append(item_to_transfer)
                     else:
@@ -5037,10 +4969,10 @@ class MainWindow(QMainWindow):
             if skipped_files_count > 0:
                 self.log_event_message(lang["MAINWINDOW_SKIPPED_N_FILES_BY_USER"].format(count=skipped_files_count))
 
-        # Тепер сюди передається список, що складається виключно з кортежів з 4 елементів
+        # Process list of 4-item file tuples
         self._finalize_task_creation(task_id, final_list_to_transfer)
 
-    # ЗАМІНІТЬ ЦЕЙ МЕТОД У КЛАСІ MainWindow
+    # MainWindow class
     def start_conflict_resolution(self, task_id, all_files, local_base_path=None):
         task = self.transfer_tasks.get(task_id)
         if not task or not all_files:
@@ -5057,7 +4989,7 @@ class MainWindow(QMainWindow):
             local_base_path=local_base_path
         )
         
-        task['worker_thread'] = thread # <-- ДОДАНО
+        task['worker_thread'] = thread
 
         thread.resolution_complete.connect(lambda nc, c, iu: self.handle_conflict_resolution_complete(task_id, nc, c))
         thread.error.connect(self.handle_scan_error)
@@ -5164,10 +5096,8 @@ class MainWindow(QMainWindow):
         self.sync_folder_action_menu.triggered.connect(self.trigger_sync_current_dir)
         self.about_action.triggered.connect(self.show_about_dialog)
 
-        # --- ДОДАЙТЕ ЦІ РЯДКИ ---
         self.back_button.clicked.connect(self.navigate_back)
         self.forward_button.clicked.connect(self.navigate_forward)
-        # --- КІНЕЦЬ ДОДАВАННЯ ---
 
     def update_action_states(self):
         has_selection = False
@@ -5254,7 +5184,6 @@ class MainWindow(QMainWindow):
         settings_action.triggered.connect(self.show_settings_dialog)
         settings_menu.addAction(settings_action)
 
-        # --- ДОДАНО НОВИЙ ПУНКТ МЕНЮ ---
         open_config_action = QAction(qta.icon("fa6s.folder-open", color="#b9bbbe") if qta else QIcon(), lang["MAINWINDOW_MENU_OPEN_CONFIG_FOLDER"], self)
         open_config_action.triggered.connect(self.open_config_folder)
         settings_menu.addAction(open_config_action)
@@ -5315,7 +5244,7 @@ class MainWindow(QMainWindow):
     def handle_file_changed(self, path):
         current_time = time.time()
         last_save_time = self.last_save_timestamps.get(path, 0)
-        if current_time - last_save_time < 1.0: # Ігнорувати, якщо з останнього збереження пройшло < 1 секунди
+        if current_time - last_save_time < 1.0: # Ignore filesystem events occurring within 1 second of save
             return
         self.last_save_timestamps[path] = current_time
         if path in self.edited_files:
@@ -5325,20 +5254,18 @@ class MainWindow(QMainWindow):
                 try:
                     self.log_event_message(lang["MAINWINDOW_FILE_CHANGED_SAVING"].format(filename=filename))
                     
-                    # --- ПОЧАТОК ВИПРАВЛЕННЯ ---
                     if not os.path.exists(path):
                         self.log_event_message(f"<span style='color: #faa61a;'>Файл '{filename}' не знайдено, можливо, його було видалено.</span>")
                         return
 
-                    # Отримуємо розмір та час модифікації ОДНИМ запитом
+                    # Fetch metadata using a single query
                     stat_info = os.stat(path)
                     size = stat_info.st_size
                     mtime = stat_info.st_mtime
                     
-                    # Створюємо ПРАВИЛЬНИЙ кортеж з 4 елементів
+                    # Create formatted 4-item file tuple
                     files_to_upload = [(path, remote_path, mtime, size)]
-                    # --- КІНЕЦЬ ВИПРАВЛЕННЯ ---
-                    
+
                     task_id = f"task_edit_{filename.replace(' ', '_')}_{time.time()}"
                     self.transfer_tasks[task_id] = {
                         "name": lang["SAVE"], "is_upload": True, "files": files_to_upload, 
@@ -5413,7 +5340,7 @@ class MainWindow(QMainWindow):
         task_name = lang["MAINWINDOW_PENDING_UPLOADS_TASK_NAME"]
         self.transfer_tasks[task_id] = {
             "name": task_name, "is_upload": True, "files_completed": 0,
-            "files_failed": 0, # <-- ДОДАНО
+            "files_failed": 0,
             "transferred_size": 0, "active_files_progress": {}
         }
         self.transfers_panel.add_task(task_id, task_name, is_upload=True)
@@ -5519,18 +5446,17 @@ class MainWindow(QMainWindow):
                     QDesktopServices.openUrl(QUrl(update_url))
     
     def open_config_folder(self):
-        # Отримуємо повний шлях до файлу конфігурації
+
         config_file_path = self.settings_manager.config_path
-        # Визначаємо теку, в якій знаходиться цей файл
+
         config_dir_path = os.path.dirname(config_file_path)
 
-        # Перевіряємо, чи існує така тека
         if os.path.exists(config_dir_path):
-            # Використовуємо QDesktopServices для крос-платформного відкриття теки
+            # Use QDesktopServices to open directory cross-platform
             from PySide6.QtGui import QDesktopServices
             QDesktopServices.openUrl(QUrl.fromLocalFile(config_dir_path))
         else:
-            # На випадок, якщо тека з якихось причин не була створена
+            # Handle cases where the directory does not exist
             QMessageBox.warning(self, lang["WARNING"], f"Теку не знайдено:\n{config_dir_path}")
 
     def toggle_hidden_files(self):
@@ -5567,17 +5493,17 @@ class MainWindow(QMainWindow):
     def _update_history(self, new_path):
         """Оновлює історію після успішної зміни каталогу."""
         if self.is_navigating_history:
-            self.is_navigating_history = False  # Скидаємо прапорець тут
-            # Оновлюємо кнопки, але не змінюємо саму історію
+            self.is_navigating_history = False
+            # Refresh button state without modifying history content
             self._update_navigation_buttons_state() 
             return
 
-        # Якщо ми знаходимось не в кінці історії (тобто, були натискання "Назад"),
-        # і переходимо до нового каталогу, то "майбутня" історія видаляється.
+        # If navigating historical paths, remove subsequent elements on branch.
+
         if self.dir_history_index < len(self.dir_history) - 1:
             self.dir_history = self.dir_history[:self.dir_history_index + 1]
 
-        # Уникаємо дублювання однакових шляхів поспіль
+        # Avoid writing consecutive duplicate directory changes to history
         if not self.dir_history or self.dir_history[-1] != new_path:
             self.dir_history.append(new_path)
             self.dir_history_index = len(self.dir_history) - 1
@@ -5619,8 +5545,7 @@ class MainWindow(QMainWindow):
             self._navigate_to_path(path_to_go)
             self._update_navigation_buttons_state()
 
-
-    # У класі MainWindow
+    # MainWindow class
     def connect_to_server(self, server_data, restore_session=False):
         self._reset_history()
         server_name = server_data.get('name', server_data.get('host'))
@@ -5670,14 +5595,10 @@ class MainWindow(QMainWindow):
             for action in self.connection_actions: action.setEnabled(True)
             self.update_action_states()
             
-            # --- ПОЧАТОК НОВОЇ ЛОГІКИ ПОСЛІДОВНОСТІ ---
-            # Створюємо callback-функцію, яка буде викликана після очищення
-            # lambda використовується, щоб передати аргумент restore_session
             post_cleanup_action = lambda: self._post_connection_setup(restore_session=restore_session)
             
-            # Запускаємо очищення, передаючи йой нашу функцію
             self.run_pending_cleanup(server_name_for_log, on_finish_callback=post_cleanup_action)
-            # --- КІНЕЦЬ НОВОЇ ЛОГІКИ ПОСЛІДОВНОСТІ ---
+
         else:
             QMessageBox.warning(self, lang["MAINWINDOW_CONNECTION_ERROR_TITLE"], message)
             self.log_event_message(lang["MAINWINDOW_CONNECTION_ERROR_LOG"].format(message=message))
@@ -5706,7 +5627,7 @@ class MainWindow(QMainWindow):
         self.update_bookmark_button_status()
 
     def cancel_all_transfers(self):
-        # Виправлено: отримуємо ID всіх активних завдань безпосередньо з панелі
+
         for task_id in list(self.transfers_panel.tasks.keys()):
             self.cancel_transfer(task_id)
         self.log_event_message(lang["MAINWINDOW_ALL_TRANSFERS_CANCELED"])
@@ -5905,7 +5826,7 @@ class MainWindow(QMainWindow):
                 extract_action.triggered.connect(lambda: self.extract_zip_archive(selected_files[0]['name']))
                 menu.addAction(extract_action)
             menu.addSeparator()
-            # Створюємо підменю для керування доступом
+            # Setup permissions management submenu
             access_menu = QMenu(lang["ACCESS_CONTROL_TITLE"], self)
             if qta:
                 access_menu.setIcon(qta.icon("fa6s.shield-halved"))
@@ -6151,7 +6072,6 @@ class MainWindow(QMainWindow):
 
         if not local_dir: return
 
-        # --- ЗМІНЕНО: Використовуємо новий генератор для створення заголовка ---
         task_name = self._generate_smart_task_name(selected_files, lang["DOWNLOADING"])
         
         task_id = f"task_download_batch_{time.time()}"
@@ -6199,10 +6119,9 @@ class MainWindow(QMainWindow):
         if not self.sftp_client.sftp or not selected_files:
             return
 
-        # 1. Запитуємо у користувача, куди зберегти файл
+        # 1. Prompt user for local archive path
         destination_dir = QFileDialog.getExistingDirectory(self, lang["MAINWINDOW_SELECT_SAVE_FOLDER"])
 
-        # 2. Якщо користувач обрав теку, запускаємо існуючу логіку архівації
         if destination_dir:
             self._initiate_server_side_archiving(selected_files, destination_dir)
 
@@ -6214,16 +6133,14 @@ class MainWindow(QMainWindow):
         task["collected_files"].extend(scanned_files)
         
         self.log_event_message(lang["MAINWINDOW_DOWNLOAD_SCAN_COMPLETE"].format(name=task['name'], count=len(task['collected_files'])))
-        # Передаємо local_dir в функцію запуску
+        # Pass local_dir to trigger function
         self.start_conflict_resolution(task_id, task["collected_files"], local_base_path=local_dir)
 
-    # --- ЗМІНЕНО: Метод тепер приймає 'selected_files' для генерації заголовка ---
     def _download_and_process_archive(self, selected_files, remote_archive_path, extract_to_dir):
         archive_filename = os.path.basename(remote_archive_path)
         local_temp_archive_path = os.path.join(tempfile.gettempdir(), archive_filename)
         task_id = f"task_download_archive_{archive_filename.replace(' ', '_')}_{time.time()}"
 
-        # --- ЗМІНЕНО: Використовуємо наш генератор для створення красивого заголовка ---
         task_name = self._generate_smart_task_name(
             selected_files,
             lang["QUICK_DOWNLOAD_TASK_TITLE"]
@@ -6243,7 +6160,6 @@ class MainWindow(QMainWindow):
         files_to_download = [(remote_archive_path, local_temp_archive_path, 0, 0)]
         self._finalize_task_creation(task_id, files_to_download)
 
-    # КРОК 2.2: ПОВНІСТЮ ЗАМІНІТЬ ЦЕЙ МЕТОД
     def _prepare_archive_extraction(self, task_id, local_archive_path, extract_to_dir, remote_path_to_delete):
         conflicts = []
         non_conflicts = []
@@ -6253,7 +6169,7 @@ class MainWindow(QMainWindow):
                 for member in zf.infolist():
                     target_path = os.path.join(extract_to_dir, member.filename)
                     
-                    # Конфліктом вважаємо тільки файли, каталоги просто створюються
+                    # Only file paths trigger conflicts checks (directories created automatically)
                     if os.path.exists(target_path) and not member.is_dir():
                         local_stat = os.stat(target_path)
                         conflicts.append({
@@ -6296,7 +6212,7 @@ class MainWindow(QMainWindow):
                 
                 if action == 'cancel':
                     self.log_event_message(lang["MAINWINDOW_EXTRACT_CANCELED_CONFLICT"])
-                    # Видаляємо тимчасові архіви
+                    # Clean temporary archive files
                     if os.path.exists(local_archive_path): os.remove(local_archive_path)
                     self.sftp_client.delete_file(remote_path_to_delete)
                     self.refresh_remote()
@@ -6310,14 +6226,13 @@ class MainWindow(QMainWindow):
                     if conflict['source_meta']['mtime'] > conflict['dest_meta']['mtime']:
                         final_members_to_extract.append(conflict['archive_member'])
 
-        # Якщо скасування не було, запускаємо розпакування обраних файлів
+        # Trigger extraction sequence on successful download
         self.start_archive_extraction(local_archive_path, extract_to_dir, remote_path_to_delete, final_members_to_extract)
 
-    # КРОК 2.1: ДОДАЙТЕ ЦЕЙ НОВИЙ МЕТОД У КЛАС MainWindow
     def start_archive_extraction(self, local_archive_path, extract_to_dir, remote_path_to_delete, members_to_extract):
         self.log_event_message(lang["MAINWINDOW_EXTRACTING_ARCHIVE_START"].format(archive_name=os.path.basename(local_archive_path)))
         
-        # Створюємо потік для розпакування, передаючи йому список файлів
+        # Spawn extraction thread with files arguments
         self.extractor_thread = ArchiveExtractorThread(local_archive_path, extract_to_dir, members_to_extract)
         self.extractor_thread.finished_signal.connect(lambda msg: self.on_extraction_finished(msg, remote_path_to_delete))
         self.extractor_thread.error_signal.connect(self.on_extraction_error)
@@ -6326,7 +6241,6 @@ class MainWindow(QMainWindow):
         self.extractor_thread.finished.connect(self._on_worker_thread_finished)
         
         self.extractor_thread.start()
-
 
     def _initiate_server_side_archiving(self, selected_files, destination_dir):
         """Створює архів на сервері та запускає процес його завантаження і розпаковки."""
@@ -6378,7 +6292,6 @@ class MainWindow(QMainWindow):
 
         self.log_event_message(lang["MAINWINDOW_ARCHIVE_CREATED_DOWNLOADING"].format(name=archive_name))
         
-        # --- ЗМІНЕНО: Передаємо 'selected_files' у наступну функцію ---
         self._download_and_process_archive(selected_files, remote_archive_path, destination_dir)
 
     def create_remote_directory(self):
@@ -6510,7 +6423,7 @@ class MainWindow(QMainWindow):
         self.search_thread.error.connect(lambda msg: self.log_event_message(lang["MAINWINDOW_SEARCH_ERROR_LOG"].format(error=msg)))
         self.search_thread.start()
 
-    # У класі MainWindow
+    # MainWindow class
     def _open_remote_file_for_editing(self, remote_path, filename_for_log):
         editor_path = self.settings_manager.get_editor_path()
         if not editor_path:
@@ -6519,10 +6432,8 @@ class MainWindow(QMainWindow):
 
         self.log_event_message(lang["MAINWINDOW_OPENING_FILE_FOR_EDIT"].format(filename=filename_for_log))
         
-        # --- ПОЧАТОК ВИПРАВЛЕННЯ ---
-        # Правильний виклик методу з двома аргументами
+        # Invoke method passing both required parameters
         success, local_path_or_error, remote_path_from_sftp = self.sftp_client.download_for_edit(remote_path, editor_path)
-        # --- КІНЕЦЬ ВИПРАВЛЕННЯ ---
 
         if success:
             local_path = local_path_or_error
@@ -6541,8 +6452,6 @@ class MainWindow(QMainWindow):
         filename = remote_path.split('/')[-1]
         self._open_remote_file_for_editing(remote_path, filename)
 
-
-
     def closeEvent(self, event):
         if hasattr(self, 'reconnect_timer') and self.reconnect_timer.isActive():
             self.reconnect_timer.stop()
@@ -6553,7 +6462,7 @@ class MainWindow(QMainWindow):
 
 class TranslationDict(dict):
     def __missing__(self, key):
-        # Повертаємо гарно відформатований ключ у разі відсутності перекладу
+
         cleaned = key.replace("MAINWINDOW_", "")
         words = cleaned.split("_")
         return " ".join(words).strip().capitalize()
@@ -6565,29 +6474,27 @@ def load_language_from_files(settings_manager):
     """
     lang_code = settings_manager.get_language()
     
-    # --- ПОЧАТОК ЗМІН ---
-    # Шлях 1: Шукаємо біля основного Python-скрипта (зручно для розробки)
+    # Path 1: Look in script directory (development environment layout)
     script_dir = os.path.dirname(os.path.abspath(__file__))
     script_lang_path = os.path.join(script_dir, 'lang', f"{lang_code}.json")
 
-    # Шлях 2: Шукаємо біля файлу конфігурації (стандартна поведінка)
+    # Path 2: Look in configuration directory (standard installation layout)
     config_dir = os.path.dirname(settings_manager.config_path)
     config_lang_path = os.path.join(config_dir, 'lang', f"{lang_code}.json")
 
     lang_file_path = ""
-    # Спочатку перевіряємо, чи є файл локалізації біля скрипта
+    # Verify translation resources availability adjacent to script
     if os.path.exists(script_lang_path):
         lang_file_path = script_lang_path
-    # Якщо ні, шукаємо в теці з конфігурацією
+    # Fallback search inside config directory structure
     elif os.path.exists(config_lang_path):
         lang_file_path = config_lang_path
-    # --- КІНЕЦЬ ЗМІН ---
 
-    # Якщо файл для обраної мови не знайдено, перемикаємось на англійську
+    # Fallback to English if chosen translation is missing
     if not lang_file_path or not os.path.exists(lang_file_path):
         print(f"Warning: Language file for '{lang_code}' not found. Falling back to English.")
         lang_code = "en"
-        # Повторюємо пошук для англійської мови
+        # Verify English translation resources availability
         script_lang_path_en = os.path.join(script_dir, 'lang', "en.json")
         config_lang_path_en = os.path.join(config_dir, 'lang', "en.json")
         if os.path.exists(script_lang_path_en):
@@ -6602,15 +6509,14 @@ def load_language_from_files(settings_manager):
         print(f"CRITICAL: Could not load language file {lang_file_path}. Error: {e}")
         return TranslationDict()
 
-
 if __name__ == "__main__":
     app = QApplication(sys.argv)
 
     # --- Language Initialization ---
-    # Створюємо один екземпляр менеджера налаштувань
+    # Initialize settings manager singleton
     settings_manager = JsonSettingsManager()
     
-    # Завантажуємо мову з JSON-файлів
+    # Load active translation tables from JSON
     lang = load_language_from_files(settings_manager)
     
     DISCORD_STYLE = """
