@@ -706,9 +706,13 @@ class ConflictResolutionThread(QThread):
                         break
                     if target_path in existing_local_files:
                         dest_stat = existing_local_files[target_path]
-                        conflicts.append({'source_path': source_path, 'target_path': target_path,
-                                          'source_meta': {'mtime': source_mtime, 'size': source_size},
-                                          'dest_meta': {'mtime': dest_stat.st_mtime, 'size': dest_stat.st_size}})
+                        # Treat recently created 0-byte files (like drag-and-drop stubs) as non-conflicts
+                        if dest_stat.st_size == 0 and abs(time.time() - dest_stat.st_mtime) < 15.0:
+                            non_conflicts.append((source_path, target_path, source_mtime, source_size))
+                        else:
+                            conflicts.append({'source_path': source_path, 'target_path': target_path,
+                                              'source_meta': {'mtime': source_mtime, 'size': source_size},
+                                              'dest_meta': {'mtime': dest_stat.st_mtime, 'size': dest_stat.st_size}})
                     else:
                         non_conflicts.append((source_path, target_path, source_mtime, source_size))
 
@@ -6933,6 +6937,32 @@ if __name__ == "__main__":
         QCheckBox::indicator:checked:disabled, StyledCheckBox::indicator:checked:disabled {
             background-color: #4f545c;
             border-color: #4f545c;
+        }
+
+        /* --- Стилізація для QRadioButton --- */
+        QRadioButton {
+            spacing: 10px; /* Відступ між кружечком та текстом */
+            color: #dcddde;
+        }
+        QRadioButton::indicator {
+            width: 16px;
+            height: 16px;
+            border-radius: 9px;
+            border: 2px solid #4f545c;
+            background-color: #202225;
+        }
+        QRadioButton::indicator:hover {
+            border-color: #7289da;
+        }
+        QRadioButton::indicator:checked {
+            border-color: #7289da;
+            background-color: #202225;
+            image: url(none); /* fallback */
+            background: qradialgradient(cx:0.5, cy:0.5, radius:0.4, fx:0.5, fy:0.5, stop:0 #7289da, stop:0.6 #7289da, stop:0.7 #202225);
+        }
+        QRadioButton::indicator:disabled {
+            background-color: #2f3136;
+            border-color: #40444b;
         }
 
         /* SpinBox and StyledSpinBox Styling */
